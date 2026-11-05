@@ -1,2 +1,4 @@
 # Weezer-rating
-um montador de raking sobre weezer
+Site Oficial: https://kert-s2.github.io/Weezer-rating/
+
+
