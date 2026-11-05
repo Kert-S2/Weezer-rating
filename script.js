@@ -421,37 +421,110 @@ function refreshCoverNote() {
   if (coverMissing) note.textContent = t("coverMissing", { file: currentAlbum });
 }
 
-function loadCover(albumKey) {
+const COVER_FOLDERS = ["covers", "images", "img", "assets", "capas", "fotos", ""];
+const IGNORED_WORDS = ["weezer", "the", "album", "cover", "capa", "art", "artwork", "official"];
+const coverCache = {};
+let repoImagesPromise = null;
+
+function tryImage(url) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = url;
+  });
+}
+
+/* "Blue Album.JPG", "weezer-blue-cover.png" e "blue.jpg" viram "blue" */
+function coverKeyFromFile(path) {
+  const base = path.split("/").pop().replace(/\.[^.]+$/, "").toLowerCase();
+  return base.split(/[^a-z0-9]+/).filter((word) => word && !IGNORED_WORDS.includes(word)).join("");
+}
+
+/* No GitHub Pages, lista todas as imagens do repositório (uma única consulta). */
+function fetchRepoImages() {
+  if (repoImagesPromise) return repoImagesPromise;
+
+  repoImagesPromise = (async () => {
+    const host = location.hostname;
+    if (!host.endsWith(".github.io")) return [];
+
+    /* guarda a lista na sessão para não passar do limite da API do GitHub */
+    const cacheKey = `${STORAGE_PREFIX}repo-images:${location.pathname}`;
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(cacheKey));
+      if (Array.isArray(cached)) return cached;
+    } catch (error) { /* ignora */ }
+
+    const parts = location.pathname.split("/").filter(Boolean);
+    const repoInPath = parts.length > 0 && !parts[0].includes(".");
+    const owner = host.split(".")[0];
+    const repo = repoInPath ? parts[0] : host;
+    if (repoInPath) parts.shift();
+    if (parts.length && parts[parts.length - 1].includes(".")) parts.pop();
+    const urlRoot = parts.length ? `${parts.join("/")}/` : "";
+
+    for (const ref of ["HEAD", "main", "master"]) {
+      try {
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/${ref}?recursive=1`);
+        if (!response.ok) continue;
+        const data = await response.json();
+        const files = data.tree.filter((item) => item.type === "blob").map((item) => item.path);
+
+        let root = urlRoot;
+        if (!files.includes(`${root}index.html`)) {
+          const index = files.find((f) => /(^|\/)index\.html$/.test(f) && files.includes(f.replace(/index\.html$/, "script.js")));
+          root = index ? index.replace(/index\.html$/, "") : "";
+        }
+        const images = files
+          .filter((f) => f.startsWith(root) && /\.(jpe?g|png|webp)$/i.test(f))
+          .map((f) => f.slice(root.length));
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(images)); } catch (error) { /* ignora */ }
+        return images;
+      } catch (error) {
+        /* tenta a próxima ref */
+      }
+    }
+    return [];
+  })();
+
+  return repoImagesPromise;
+}
+
+async function findCover(albumKey) {
+  if (coverCache[albumKey]) return coverCache[albumKey];
+
+  /* 1) pastas mais comuns, todas ao mesmo tempo */
+  const urls = [];
+  COVER_FOLDERS.forEach((folder) => {
+    COVER_EXTENSIONS.forEach((ext) => urls.push(folder ? `${folder}/${albumKey}.${ext}` : `${albumKey}.${ext}`));
+  });
+  let image = (await Promise.all(urls.map(tryImage))).find(Boolean) || null;
+
+  /* 2) procura o nome da imagem em qualquer pasta do repositório */
+  if (!image) {
+    const files = await fetchRepoImages();
+    const match = files.find((file) => coverKeyFromFile(file) === albumKey);
+    if (match) image = await tryImage(encodeURI(match));
+  }
+
+  if (image) coverCache[albumKey] = image;
+  return image;
+}
+
+async function loadCover(albumKey) {
   const token = ++coverToken;
   coverImage = null;
   coverMissing = false;
   refreshCoverNote();
 
-  let attempt = 0;
-  const tryNext = () => {
-    if (token !== coverToken) return;
+  const image = await findCover(albumKey);
+  if (token !== coverToken) return;
 
-    if (attempt >= COVER_EXTENSIONS.length) {
-      coverMissing = true;
-      refreshCoverNote();
-      update();
-      return;
-    }
-
-    const image = new Image();
-    image.onload = () => {
-      if (token !== coverToken) return;
-      coverImage = image;
-      update();
-    };
-    image.onerror = () => {
-      attempt += 1;
-      tryNext();
-    };
-    image.src = `covers/${albumKey}.${COVER_EXTENSIONS[attempt]}`;
-  };
-
-  tryNext();
+  coverImage = image;
+  coverMissing = !image;
+  refreshCoverNote();
+  update();
 }
 
 /* ------------------------------------------------------------------
