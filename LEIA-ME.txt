@@ -1,0 +1,47 @@
+WEEZER RATING GENERATOR
+
+COMO ABRIR
+1. Extraia o arquivo ZIP.
+2. Abra a pasta weezer-rating-generator no Visual Studio Code.
+3. Coloque as capas dos álbuns na pasta "covers" (veja abaixo).
+4. Clique com o botão direito em index.html e escolha "Open with Live Server"
+   (extensão Live Server do VS Code).
+5. Escolha um álbum, dê notas e clique em "Download card as PNG" (ou "Baixar card em PNG").
+
+POR QUE LIVE SERVER?
+O navegador bloqueia a geração do PNG quando uma imagem é carregada de um arquivo
+aberto com duplo clique (file://). A prévia aparece normalmente, mas o botão de
+baixar mostra um aviso. Com o Live Server funciona.
+Sem capas, o site funciona e baixa o PNG de qualquer jeito (com uma capa genérica).
+
+CAPAS (pasta covers)
+Salve a imagem de cada álbum com estes nomes (.jpg, .jpeg, .png ou .webp):
+  blue.jpg         Blue Album (1994)
+  pinkerton.jpg    Pinkerton (1996)
+  green.jpg        Green Album (2001)
+  maladroit.jpg    Maladroit (2002)
+  makebelieve.jpg  Make Believe (2005)
+  red.jpg          The Red Album (2008)
+  white.jpg        The White Album (2016)
+  okhuman.jpg      OK Human (2021)
+Imagens quadradas funcionam melhor. Se não for quadrada, o centro é recortado.
+Quando uma capa não é encontrada, aparece um aviso abaixo da lista de álbuns.
+
+ARQUIVOS
+- index.html: estrutura da página.
+- style.css: aparência e layout responsivo.
+- script.js: álbuns, notas, prévia e geração do PNG.
+- covers/: capas dos álbuns.
+
+IDIOMAS
+O site abre em inglês. Os botões EN, BR e ES, no topo, trocam a página e o card
+para inglês, português ou espanhol. O idioma escolhido fica salvo no navegador.
+Para mudar ou corrigir um texto, edite o objeto I18N no começo do script.js.
+
+OBSERVAÇÕES
+- Não precisa de servidor próprio, banco de dados, login ou dependências.
+- As notas, tracklists editadas, o nome e o idioma ficam salvos no navegador (localStorage),
+  por álbum. Limpar os dados do navegador apaga tudo.
+- A imagem é gerada pelo Canvas nativo do navegador, sem bibliotecas externas.
+- As tracklists são uma seleção inicial e podem ser editadas no campo "Editar tracklist".
+- Projeto de fã independente, sem vínculo oficial com o Weezer.
